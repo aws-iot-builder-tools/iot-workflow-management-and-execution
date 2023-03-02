@@ -1,8 +1,33 @@
 ## IoT Workflow Management and Execution (WME) 
-This code sample illustrates a possible implementation of workflow management and orchestration for IoT device workflows, using Serverless AWS services, such as AWS Step Functions, Amazon DynamoDB, AWS Lambda, as well as AWS IoT Core. 
-One workflow is currently implemented, the firmware upgrade, but the solution can be extended to implement other workflows as needed.
+This sample project is accompanying the research paper prepared for  the [embedded world Conference 2023](https://events.weka-fachmedien.de/embedded-world-conference/program/) entitled _"Cloud-Managed Finite State Machines for Remote Orchestration of IoT Device Workflows"_. 
 
-This code sample is accompanying the research paper prepared for  the [embedded world Conference 2023](https://events.weka-fachmedien.de/embedded-world-conference/program/) entitled _"Cloud-Managed Finite State Machines for Remote Orchestration of IoT Device Workflows"_.
+The example explores modelling workflows using Finite State Machines (FSM) to break down complexity and introduce an externalized, cloud managed approach to design, build, operate and remotely orchestrate resilient workflows
+outside the scope of specific request/response cycles and independent of device uptime.
+
+The code sample illustrates a possible implementation of workflow management and orchestration for IoT device workflows which is agnostic of specific low-level IoT device management protocols. 
+In this expample, we are using serverless AWS services, such as AWS Step Functions, Amazon DynamoDB, AWS Lambda, as well as AWS IoT Core. 
+
+One example workflow is implemented, the firmware upgrade, but the solution can be extended to implement other workflows that involve primitive or non-primitive IoT device operations, as well as interactions with other systems.
+
+## Design Considerations
+The approach described in this project is to externalize workflow and workflow execution management, in a separate component. 
+
+The different components interact with one another following Domain-Driven Design principles:
+
+1)	**Bounded context:** The domains are clearly defined, have their own responsibilities and specify interfaces to other domains.
+2)	**Loose Coupling:** The domains are loosely coupled; their implementations are not aware of each other at a detailed level and can be altered or replaced over time.
+3)	**Message Driven:** The domains collaborate with each other via defined messages. Each domain has a specific set of messages that it sends or receives. 
+4)  **Encapsulation:** Each domain encapsulates its own concerns, the resilience within that domain, error handling, and the data storage for that domain.
+
+**Domain Components:**
+1. **Job Processing and Scheduling**: Component that allows for creating and submitting jobs for execution, targeting a device or a group of devices.
+2. **Workflow Management and Execution**: Component which models workflows as ordered sets of steps/tasks, coordinates executions, tracks state at each task and at workflow level.
+3. **Device Management**: Component that exposes core functionality like device operations, storing/retrieving device data, or validation of device status. This component implements Device Management protocols specifics (like LWM2M, TR-369 etc) in its communication to the IoT Devices, but 
+creates an abstraction layer on top of these protocols.
+
+Note that this design can be implemented with other technologies, frameworks and services. This samples shows an example implementation.
+
+![](docs/design-considerations.png)
 
 ## High-Level Architecture
 ![](docs/high-level-solution.png)
