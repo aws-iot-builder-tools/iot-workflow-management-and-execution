@@ -1,0 +1,9 @@
+{
+
+  "name": "message-handler",
+  "version": "1.0.0",
+  "type": "module",
+  "dependencies": {
+    "@aws-sdk/client-sns": "^3.267.0"
+  }
+}

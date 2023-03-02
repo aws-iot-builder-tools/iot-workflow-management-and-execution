@@ -1,0 +1,501 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  workflow-management-and-execution
+  SAM Template for IoT workflow-management-and-execution
+
+Globals:
+  Function:
+    Tracing: Active
+    Timeout: 60
+
+Parameters:
+  StateMachineName:
+    Type: String
+    Default: FirmwareUpgrade
+
+Resources:
+  EventsSNSTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: "EventsTopic"
+      KmsMasterKeyId: alias/aws/sns
+
+  DMDownloadFirmwareFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Policies:
+        - SNSPublishMessagePolicy:
+            TopicName: !GetAtt EventsSNSTopic.TopicName
+        - Statement:
+            Effect: Allow
+            Action:
+              - iot:DescribeEndpoint
+            Resource: "*"
+        - Statement:
+            Effect: Allow
+            Action:
+              - 'iot:Connect'
+            Resource:
+              - !Sub
+                - 'arn:aws:iot:${Region}:${AccountID}:client/*'
+                - Region: !Ref 'AWS::Region'
+                  AccountID: !Ref 'AWS::AccountId'
+        - Statement:
+            Effect: Allow
+            Action:
+              - 'iot:Publish'
+            Resource:
+              - !Sub
+                - 'arn:aws:iot:${Region}:${AccountID}:topic/*/*/*/*'
+                - Region: !Ref 'AWS::Region'
+                  AccountID: !Ref 'AWS::AccountId'
+        - Statement:
+            Effect: Allow
+            Action:
+              - 'iot:Subscribe'
+            Resource:
+              - !Sub
+                - 'arn:aws:iot:${Region}:${AccountID}:topicfilter/*/*'
+                - Region: !Ref 'AWS::Region'
+                  AccountID: !Ref 'AWS::AccountId'
+        - Statement:
+            Effect: Allow
+            Action:
+              - 'iot:Receive'
+            Resource:
+              - !Sub
+                - 'arn:aws:iot:${Region}:${AccountID}:topic/*/*'
+                - Region: !Ref 'AWS::Region'
+                  AccountID: !Ref 'AWS::AccountId'
+      CodeUri: device-management/functions/download-operation/
+      Handler: app.lambdaHandler
+      Runtime: nodejs18.x
+      Environment:
+        Variables:
+          EVENT_TOPIC_ARN: !Ref EventsSNSTopic
+          REGION: !Ref 'AWS::Region'
+      Architectures:
+        - x86_64
+  JobsUpdateStatus:
+    Type: AWS::Serverless::Function
+    Properties:
+      Policies:
+        - Statement:
+            Effect: Allow
+            Action:
+              - iot:DescribeEndpoint
+            Resource: "*"
+        - Statement:
+            Effect: Allow
+            Action:
+              - iotjobsdata:UpdateJobExecution
+            Resource:
+              - !Sub
+                - 'arn:aws:iot:${Region}:${AccountID}:thing/*'
+                - Region: !Ref 'AWS::Region'
+                  AccountID: !Ref 'AWS::AccountId'
+      CodeUri: job-processing-and-scheduling/functions/update-status
+      Handler: app.lambdaHandler
+      Runtime: nodejs18.x
+      Environment:
+        Variables:
+          EVENT_TOPIC_ARN: !Ref EventsSNSTopic
+          REGION: !Ref 'AWS::Region'
+      Architectures:
+        - x86_64
+  JobsCreateJob:
+    Type: AWS::Serverless::Function
+    Properties:
+      Policies:
+        - Statement:
+            Effect: Allow
+            Action:
+              - iot:DescribeEndpoint
+            Resource: "*"
+        - Statement:
+            Effect: Allow
+            Action:
+              - iot:CreateJob
+              - iot:DescribeJobTemplate
+            Resource: [
+                {
+                  "Fn::Sub": "arn:aws:iot:*:${AWS::AccountId}:jobtemplate/*"
+                },
+                {
+                  "Fn::Sub": "arn:aws:iot:*:${AWS::AccountId}:thinggroup/*"
+                },
+                {
+                  "Fn::Sub": "arn:aws:iot:*:${AWS::AccountId}:job/*"
+                },
+                {
+                  "Fn::Sub": "arn:aws:iot:*:${AWS::AccountId}:thing/*"
+                }
+              ]
+      CodeUri: job-processing-and-scheduling/functions/create-job
+      Handler: app.lambdaHandler
+      Runtime: nodejs18.x
+      Environment:
+        Variables:
+          FWU_STATE_MACHINE: !Ref StateMachineName
+          REGION: !Ref 'AWS::Region'
+      Architectures:
+        - x86_64
+  UpgradeStatusReceivedFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Policies:
+        - SNSPublishMessagePolicy:
+            TopicName: !GetAtt EventsSNSTopic.TopicName
+        - Statement:
+            Effect: Allow
+            Action:
+              - dynamodb:Query
+            Resource: !Join [ "", [ "arn:aws:dynamodb:", !Ref "AWS::Region", ":", !Ref "AWS::AccountId", ":table/", !Ref "FirmwareUpgradeTaskTokensDB" ] ]
+        - Statement:
+            Effect: Allow
+            Action:
+              - states:SendTaskFailure
+              - states:SendTaskSuccess
+            Resource: !Ref FirmwareUpgradeStateMachine
+      CodeUri: workflow-management-and-execution/functions/upgrade-status-device-events/
+      Handler: app.lambdaHandler
+      Runtime: nodejs18.x
+      Environment:
+        Variables:
+          EVENT_TOPIC_ARN: !Ref EventsSNSTopic
+          TOKENS_TABLE_NAME: !Ref FirmwareUpgradeTaskTokensDB
+      Architectures:
+        - x86_64
+  OnDownloadStartACKFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Policies:
+        - Statement:
+            Effect: Allow
+            Action:
+              - states:SendTaskFailure
+              - states:SendTaskSuccess
+            Resource: !Ref FirmwareUpgradeStateMachine
+      CodeUri: workflow-management-and-execution/functions/upgrade-start-ack/
+      Handler: app.lambdaHandler
+      Runtime: nodejs18.x
+      Architectures:
+        - x86_64
+  FirmwareUpgradeJobTemplate:
+    Type: AWS::IoT::JobTemplate
+    DependsOn: EventsSNSTopic
+    Properties:
+      JobTemplateId: !Sub "${StateMachineName}"
+      Description: Firmware Upgrade Job Template
+      Document: !Sub |
+        {
+           "version": "1.0",
+           "firmwareVersion": "",
+           "stateMachineName": "${StateMachineName}",
+           "eventTopic": "arn:aws:sns:${AWS::Region}:${AWS::AccountId}:EventsTopic",
+           "upgradeTrigger": "manual"
+        }
+
+  StartStateMachine:
+    Type: AWS::IoT::TopicRule
+    Properties:
+      RuleName: StartStateMachineRule
+      TopicRulePayload:
+        AwsIotSqlVersion: 2016-03-23
+        RuleDisabled: False
+        Sql: "SELECT *, topic(3) AS thingName FROM '$aws/things/+/jobs/notify-next' WHERE isUndefined(execution)=false"
+        Actions:
+          - StepFunctions:
+              RoleArn: !GetAtt StepFunctionInvoke.Arn
+              StateMachineName: !Sub "${StateMachineName}"
+  DeviceMessageHandlerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: device-management/functions/message-handler/
+      Handler: app.lambdaHandler
+      Runtime: nodejs18.x
+      Policies:
+        - SNSPublishMessagePolicy:
+            TopicName: !GetAtt EventsSNSTopic.TopicName
+      Architectures:
+        - x86_64
+      Environment:
+        Variables:
+          EVENT_TOPIC_ARN: !Ref EventsSNSTopic
+      Events:
+        IoTLambda:
+          Type: IoTRule
+          Properties:
+            AwsIotSqlVersion: 2016-03-23
+            Sql: SELECT topic(4) as thingName, decode(decode(encode(*, 'base64'), 'proto', 'usp1.1bucket', 'usp-1-1.desc', 'usp-record-1-1.proto', 'Record').noSessionContext.payload, 'proto', 'usp1.1bucket', 'usp-1-1.desc', 'usp-msg-1-1.proto', 'Msg') as payload FROM 'controllers/self::aws-dm-controller/agents/+/response'
+
+  StepFunctionInvoke:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Action:
+              - sts:AssumeRole
+            Principal:
+              Service:
+                - iot.amazonaws.com
+      Policies:
+        - PolicyName: allowStartStepFunction
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action: states:StartExecution
+                Resource: !Ref FirmwareUpgradeStateMachine
+
+  FirmwareUpgradeStateMachineRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Action:
+              - sts:AssumeRole
+            Principal:
+              Service:
+                - states.amazonaws.com
+      Policies:
+        - PolicyName: allowIoT
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - iot:searchIndex
+                  - iot:updateThing
+                Resource: '*'
+        - PolicyName: allowSNS
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action: sns:*
+                Resource: !Ref EventsSNSTopic
+        - PolicyName: allowLogs
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogDelivery
+                  - logs:GetLogDelivery
+                  - logs:UpdateLogDelivery
+                  - logs:DeleteLogDelivery
+                  - logs:ListLogDeliveries
+                  - logs:PutLogEvents
+                  - logs:PutResourcePolicy
+                  - logs:DescribeResourcePolicies
+                  - logs:DescribeLogGroups
+                Resource: '*'
+        - PolicyName: allowTrace
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - xray:PutTraceSegments
+                  - xray:PutTelemetryRecords
+                  - xray:GetSamplingRules
+                  - xray:GetSamplingTargets
+                Resource: '*'
+        - PolicyName: allowDynamo
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action: dynamodb:PutItem
+                Resource: !Join [ "", [ "arn:aws:dynamodb:", !Ref "AWS::Region", ":", !Ref "AWS::AccountId", ":table/", !Ref "FirmwareUpgradeTaskTokensDB" ] ]
+
+  FirmwareUpgradeStateMachine:
+    Type: AWS::Serverless::StateMachine
+    Properties:
+      Name: !Sub "${StateMachineName}"
+      DefinitionUri: workflow-management-and-execution/statemachine/firmware_upgrade.asl.json
+      Role: !GetAtt  FirmwareUpgradeStateMachineRole.Arn
+      Logging:
+        Destinations:
+          - CloudWatchLogsLogGroup:
+              LogGroupArn: !GetAtt StepFunctionsLogGroup.Arn
+        IncludeExecutionData: True
+        Level: ALL
+      Tracing:
+        Enabled: true
+  StepFunctionsLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/stepfunc/${StateMachineName}
+      RetentionInDays: 30
+  FirmwareUpgradeTaskTokensDB:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: FWUTaskTokens
+      AttributeDefinitions:
+        - AttributeName: operationId
+          AttributeType: S
+        - AttributeName: token
+          AttributeType: S
+
+      KeySchema:
+        - AttributeName: operationId
+          KeyType: HASH
+        - AttributeName: token
+          KeyType: RANGE
+      BillingMode: PAY_PER_REQUEST
+
+  ProtoBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: usp1.1bucket
+
+  ProtoBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref ProtoBucket
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Action:
+              - 's3:Get*'
+            Effect: Allow
+            Resource: !Join
+              - ''
+              - - 'arn:aws:s3:::'
+                - !Ref ProtoBucket
+                - /*
+            Principal:
+              Service:
+                - iot.amazonaws.com
+
+  DMDownloadFirmwareFunctSub:
+    Type: AWS::SNS::Subscription
+    Properties:
+      Endpoint: !GetAtt DMDownloadFirmwareFunction.Arn
+      FilterPolicy:
+        name:
+          - START_UPGRADE
+      FilterPolicyScope: MessageBody
+      Protocol: lambda
+      TopicArn: !Ref EventsSNSTopic
+
+  DMLambdaInvokePermission:
+    Type: 'AWS::Lambda::Permission'
+    Properties:
+      Action: 'lambda:InvokeFunction'
+      Principal: sns.amazonaws.com
+      FunctionName: !GetAtt
+        - DMDownloadFirmwareFunction
+        - Arn
+      SourceArn: !Ref EventsSNSTopic
+
+  JobsUpdateStatusSub:
+    Type: AWS::SNS::Subscription
+    Properties:
+      Endpoint: !GetAtt JobsUpdateStatus.Arn
+      FilterPolicy:
+        name:
+          - FIRMWARE_UPGRADE_SUCCESS
+          - FIRMWARE_UPGRADE_FAIL
+      FilterPolicyScope: MessageBody
+      Protocol: lambda
+      TopicArn: !Ref EventsSNSTopic
+  JULambdaInvokePermission:
+    Type: 'AWS::Lambda::Permission'
+    Properties:
+      Action: 'lambda:InvokeFunction'
+      Principal: sns.amazonaws.com
+      FunctionName: !GetAtt
+        - JobsUpdateStatus
+        - Arn
+      SourceArn: !Ref EventsSNSTopic
+
+  JobsCreateJobSub:
+    Type: AWS::SNS::Subscription
+    Properties:
+      Endpoint: !GetAtt JobsCreateJob.Arn
+      FilterPolicy:
+        name:
+          - FIRMWARE_UPGRADE_SUCCESS
+          - FIRMWARE_UPGRADE_FAIL
+      FilterPolicyScope: MessageBody
+      Protocol: lambda
+      TopicArn: !Ref EventsSNSTopic
+  JCLambdaInvokePermission:
+    Type: 'AWS::Lambda::Permission'
+    Properties:
+      Action: 'lambda:InvokeFunction'
+      Principal: sns.amazonaws.com
+      FunctionName: !GetAtt
+        - JobsCreateJob
+        - Arn
+      SourceArn: !Ref EventsSNSTopic
+  UpgradeStatusReceivedSub:
+    Type: AWS::SNS::Subscription
+    Properties:
+      Endpoint: !GetAtt UpgradeStatusReceivedFunction.Arn
+      FilterPolicy:
+        name:
+          - DOWNLOAD_OPERATION_DONE
+          - FIRMWARE_TRANSFERRED
+          - DEVICE_REBOOTED
+      FilterPolicyScope: MessageBody
+      Protocol: lambda
+      TopicArn: !Ref EventsSNSTopic
+  UpgradeStatusLambdaInvokePermission:
+    Type: 'AWS::Lambda::Permission'
+    Properties:
+      Action: 'lambda:InvokeFunction'
+      Principal: sns.amazonaws.com
+      FunctionName: !GetAtt
+        - UpgradeStatusReceivedFunction
+        - Arn
+      SourceArn: !Ref EventsSNSTopic
+  OnDownloadStartACKSub:
+    Type: AWS::SNS::Subscription
+    Properties:
+      Endpoint: !GetAtt OnDownloadStartACKFunction.Arn
+      FilterPolicy:
+        name:
+          - DEVICE_STARTED_DOWNLOAD_SUCCESS
+          - DEVICE_STARTED_DOWNLOAD_FAIL
+      FilterPolicyScope: MessageBody
+      Protocol: lambda
+      TopicArn: !Ref EventsSNSTopic
+  OnAckLambdaInvokePermission:
+    Type: 'AWS::Lambda::Permission'
+    Properties:
+      Action: 'lambda:InvokeFunction'
+      Principal: sns.amazonaws.com
+      FunctionName: !GetAtt
+        - OnDownloadStartACKFunction
+        - Arn
+      SourceArn: !Ref EventsSNSTopic
+
+  ApplicationResourceGroup:
+    Type: AWS::ResourceGroups::Group
+    Properties:
+      Name:
+        Fn::Join:
+        - ''
+        - - ApplicationInsights-SAM-
+          - Ref: AWS::StackName
+      ResourceQuery:
+        Type: CLOUDFORMATION_STACK_1_0
+  ApplicationInsightsMonitoring:
+    Type: AWS::ApplicationInsights::Application
+    Properties:
+      ResourceGroupName:
+        Fn::Join:
+        - ''
+        - - ApplicationInsights-SAM-
+          - Ref: AWS::StackName
+      AutoConfigurationEnabled: 'true'
+    DependsOn: ApplicationResourceGroup

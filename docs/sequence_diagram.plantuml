@@ -1,0 +1,65 @@
+@startuml
+title SUCCESSFUL Firmware Upgrade Sequence
+
+ participant CreateJobLambda_JPS
+ participant AWSIoTJobsService_JPS
+ participant NotifyNextMQTTTopic_JPS
+ participant AWSIoTRule_JPS
+ participant JobsStatusLambda_JPS
+ 
+ participant AmazonSNS
+ 
+ participant FWU_AWSStFunct_WME
+ participant OtherSystems
+ participant StartACKLambda_WME
+ participant UpgradeStatusLambda_WME
+
+ participant DownloadOpLambda_DM
+ participant TR369MTP_DM
+  participant DeviceEventsLambda_DM
+ participant AsyncMQTTTopic_DM
+ 
+ participant IoTDevice
+ 
+
+CreateJobLambda_JPS->AWSIoTJobsService_JPS:create job
+
+AWSIoTJobsService_JPS-> NotifyNextMQTTTopic_JPS: publish job execution
+AWSIoTRule_JPS-> NotifyNextMQTTTopic_JPS: consume job execution
+AWSIoTRule_JPS->FWU_AWSStFunct_WME: start state machine
+FWU_AWSStFunct_WME-> OtherSystems: perform task actions
+note right of FWU_AWSStFunct_WME: As described by the state machine (Fig.16)
+
+FWU_AWSStFunct_WME->AmazonSNS: publish START_UPGRADE
+DownloadOpLambda_DM->AmazonSNS: consume START_UPGRADE
+DownloadOpLambda_DM->TR369MTP_DM: prepare MTP layer
+DownloadOpLambda_DM->TR369MTP_DM: send download(autoactivate)
+TR369MTP_DM->IoTDevice: download(autoactivate)
+IoTDevice->TR369MTP_DM: OperResp(DownloadOp)
+TR369MTP_DM->DownloadOpLambda_DM: OperResp(DownloadOp)
+DownloadOpLambda_DM->AmazonSNS: publish DEVICE_STARTED_DOWNLOAD_SUCCESS
+StartACKLambda_WME->AmazonSNS:consume DEVICE_STARTED_DOWNLOAD_SUCCESS
+StartACKLambda_WME->FWU_AWSStFunct_WME: callback on StartDownload state
+
+IoTDevice->AsyncMQTTTopic_DM: publish TransferCompleted!
+DeviceEventsLambda_DM->AsyncMQTTTopic_DM: consume TransferCompleted!
+DeviceEventsLambda_DM->AmazonSNS: publish FIRMWARE_TRANSFERRED
+UpgradeStatusLambda_WME->AmazonSNS: consume FIRMWARE_TRANSFERRED
+UpgradeStatusLambda_WME->FWU_AWSStFunct_WME: callback on WaitForFirmwareTransfered
+IoTDevice->AsyncMQTTTopic_DM: publish OperationCompleted
+DeviceEventsLambda_DM->AsyncMQTTTopic_DM: consume OperationCompleted
+DeviceEventsLambda_DM->AmazonSNS: publish DOWNLOAD_OPERATION_DONE
+UpgradeStatusLambda_WME->AmazonSNS: consume DOWNLOAD_OPERATION_DONE
+UpgradeStatusLambda_WME->FWU_AWSStFunct_WME: callback on WaitForDownloadOperationResponse
+
+IoTDevice->AsyncMQTTTopic_DM: publish Boot!
+DeviceEventsLambda_DM->AsyncMQTTTopic_DM: consume Boot!
+DeviceEventsLambda_DM->AmazonSNS: publish DEVICE_REBOOTED
+UpgradeStatusLambda_WME->AmazonSNS: consume DEVICE_REBOOTED
+UpgradeStatusLambda_WME->FWU_AWSStFunct_WME: callback on WaitForDeviceRebooted
+FWU_AWSStFunct_WME->OtherSystems:perform other task actions
+note right of FWU_AWSStFunct_WME: As described by the state machine (Fig.16)
+FWU_AWSStFunct_WME->AmazonSNS: publish FIRMWARE_UPGRADE_SUCCESS
+JobsStatusLambda_JPS->AmazonSNS: consume FIRMWARE_UPGRADE_SUCCESS
+JobsStatusLambda_JPS->AWSIoTJobsService_JPS: update job status SUCCESS
+@enduml
