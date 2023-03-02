@@ -2,12 +2,18 @@
 This code sample illustrates a possible implementation of workflow management and orchestration for IoT device workflows, using Serverless AWS services, such as AWS Step Functions, Amazon DynamoDB, AWS Lambda, as well as AWS IoT Core. 
 One workflow is currently implemented, the firmware upgrade, but the solution can be extended to implement other workflows as needed.
 
-This code sample is accompanying the research paper prepared for  the [embedded world Conference 2023]((https://events.weka-fachmedien.de/embedded-world-conference/program/)) entitled _"Cloud-Managed Finite State Machines for Remote Orchestration of IoT Device Workflows"_.
+This code sample is accompanying the research paper prepared for  the [embedded world Conference 2023](https://events.weka-fachmedien.de/embedded-world-conference/program/) entitled _"Cloud-Managed Finite State Machines for Remote Orchestration of IoT Device Workflows"_.
 
 ## High-Level Architecture
 ![](docs/high-level-solution.png)
 
-A sequence diagram is located in [here](/docs/high-level-solution.png). 
+A sequence diagram is located in [here](/docs/Sequence-Diagram.png). 
+
+The sample state machine for the firmware upgrade workflow implemented by this sample project is located [here](workflow-management-and-execution/statemachine/firmware_upgrade.asl.json)
+
+![](docs/stepfunctions_statemachine.png)
+
+![](docs/stepfunctions_aws_service_integration.png)
 
 ## Building and deploying the project
 
