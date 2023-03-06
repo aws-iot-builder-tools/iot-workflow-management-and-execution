@@ -12,7 +12,8 @@ export class ResilientMqttClient extends EventEmitter {
         this._clientId = this._options.clientId;
     }
 
-    async start() {
+    async start(iotEndpoint) {
+        this._options.endpoint = iotEndpoint;
         console.log('[MqttClient] MqttClient_Start', {clientId: this._clientId});
         try {
             if ((await this.createClient()) && (await this.configureConnection()) && (await this.connect())) {

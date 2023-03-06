@@ -13,10 +13,20 @@ const USP_RECORD_VERSION = '1.1';
 const client = new IoTClient({region: REGION});
 
 export class MqttMtp {
-    constructor(lambdaUUID, controllerId) {
+    constructor(lambdaUUID, controllerId, mqttClient) {
         this.lambdaUUID = lambdaUUID;
         this.controllerId = controllerId;
         this.responseTopic = `controllers/${this.controllerId}/usp/reply-to/${this.lambdaUUID}`;
+
+        this.mqttClient = mqttClient || new ResilientMqttClient({
+            clientId: this.lambdaUUID,
+            keepAlive: 1200,
+            region: REGION
+        });
+        this.mqttClient.on('connected', async () => {
+            await this.onConnected();
+        });
+        this.responseCallbackMap = {};
     }
 
     async _configureEndpoint () {
@@ -27,23 +37,9 @@ export class MqttMtp {
         return response.endpointAddress;
     }
 
-    async _configure (mqttClient) {
-        const IOT_ENDPOINT = await this._configureEndpoint();
-        this.mqttClient = mqttClient || new ResilientMqttClient({
-            clientId: this.lambdaUUID,
-            endpoint: IOT_ENDPOINT,
-            keepAlive: 1200,
-            region: REGION
-        });
-        this.mqttClient.on('connected', async () => {
-            await this.onConnected();
-        });
-        this.responseCallbackMap = {};
-    }
-
     async prepareMTP() {
-        await this._configure();
-        return this.mqttClient.start();
+        const iotEndpoint = await this._configureEndpoint();
+        return this.mqttClient.start(iotEndpoint);
     }
 
     async sendRequest(agentId, thingName, requestMessage) {

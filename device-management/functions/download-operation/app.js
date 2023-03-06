@@ -31,8 +31,6 @@ export const lambdaHandler = async (event) => {
     await snsClient.send(new PublishCommand(params));
 };
 
-
-// TODO: Check the Thing exists and is connected.
 const downloadFirmware = async (message) => {
     console.log('message', {handleEvent: message});
     await mqttMtp.prepareMTP();
