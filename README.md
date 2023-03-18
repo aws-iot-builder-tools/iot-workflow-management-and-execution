@@ -7,7 +7,7 @@ outside the scope of specific request/response cycles and independent of device 
 The code sample illustrates a possible implementation of workflow management and orchestration for IoT device workflows which is agnostic of specific low-level IoT device management protocols. 
 In this example, we are using serverless AWS services, such as AWS Step Functions, Amazon DynamoDB, AWS Lambda, as well as AWS IoT Core, Rules Engine and AWS IoT Device Management Jobs. 
 
-One example workflow is implemented, the firmware upgrade, but the solution can be extended to implement other workflows that involve primitive or non-primitive IoT device operations, as well as interactions with other systems.
+One example workflow is implemented, the firmware upgrade, but the solution can be extended to implement other workflows that aggregate primitive and non-primitive IoT device operations, as well as interactions with other systems.
 
 ## Design Considerations
 The approach described in this project is to externalize workflow and workflow execution management, in a separate component. 
