@@ -416,27 +416,6 @@ Resources:
         - JobsUpdateStatus
         - Arn
       SourceArn: !Ref EventsSNSTopic
-
-  JobsCreateJobSub:
-    Type: AWS::SNS::Subscription
-    Properties:
-      Endpoint: !GetAtt JobsCreateJob.Arn
-      FilterPolicy:
-        name:
-          - FIRMWARE_UPGRADE_SUCCESS
-          - FIRMWARE_UPGRADE_FAIL
-      FilterPolicyScope: MessageBody
-      Protocol: lambda
-      TopicArn: !Ref EventsSNSTopic
-  JCLambdaInvokePermission:
-    Type: 'AWS::Lambda::Permission'
-    Properties:
-      Action: 'lambda:InvokeFunction'
-      Principal: sns.amazonaws.com
-      FunctionName: !GetAtt
-        - JobsCreateJob
-        - Arn
-      SourceArn: !Ref EventsSNSTopic
   UpgradeStatusReceivedSub:
     Type: AWS::SNS::Subscription
     Properties:

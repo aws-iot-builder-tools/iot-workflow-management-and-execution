@@ -9,7 +9,17 @@
       },
       "Resource": "arn:aws:states:::aws-sdk:iot:searchIndex",
       "Next": "IsDeviceFound?",
-      "ResultPath": "$.result"
+      "ResultPath": "$.result",
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "BackoffRate": 2,
+          "IntervalSeconds": 4,
+          "MaxAttempts": 2
+        }
+      ]
     },
     "IsDeviceFound?": {
       "Type": "Choice",

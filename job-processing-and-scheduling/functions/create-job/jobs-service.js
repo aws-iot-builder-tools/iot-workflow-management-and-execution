@@ -40,7 +40,7 @@ export class JobsService {
     }
 
     async createJobFromEvent (event) {
-        console.log('CreateJob', {handleEvent: event});
+        console.log('CreateJob', {handleEvent: JSON.stringify(event)});
         const describeJobTemplateResult = await this._describeJobTemplate({
             jobTemplateId: stateMachineName
         });
