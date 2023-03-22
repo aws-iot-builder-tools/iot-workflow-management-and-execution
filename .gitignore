@@ -6,3 +6,5 @@
 # Ignore Mac DS_Store files
 **/.DS_Store
 /device-agent-simulator/env.list
+/device-management/functions/download-operation/node_modules/
+/device-management/functions/message-handler/node_modules/

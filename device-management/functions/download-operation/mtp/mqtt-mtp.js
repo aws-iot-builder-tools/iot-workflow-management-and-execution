@@ -38,6 +38,8 @@ export class MqttMtp {
     }
 
     async prepareMTP() {
+        //TODO: this is bad at scale. IoT Core will throttle here.The endpoint call should be made once,
+        // or the endpoint should be passed in config.
         const iotEndpoint = await this._configureEndpoint();
         return this.mqttClient.start(iotEndpoint);
     }

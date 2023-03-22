@@ -178,7 +178,6 @@
     "StartDownload": {
       "Type": "Task",
       "Resource": "arn:aws:states:::sns:publish.waitForTaskToken",
-      "HeartbeatSeconds": 10,
       "Parameters": {
         "TopicArn.$": "$.execution.jobDocument.eventTopic",
         "Message": {
@@ -198,7 +197,8 @@
           "Next": "PublishFailureToStart"
         }
       ],
-      "ResultPath": null
+      "ResultPath": null,
+      "HeartbeatSeconds": 120
     },
     "WaitForDeviceMessages": {
       "Type": "Parallel",

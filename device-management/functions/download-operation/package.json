@@ -6,8 +6,8 @@
   "dependencies": {
     "@aws-sdk/client-sns": "^3.267.0",
     "uuid": "^9.0.0",
-    "aws-iot-device-sdk-v2": "1.6.2",
-    "aws-crt": "1.10.4",
+    "aws-iot-device-sdk-v2": "^1.9.5",
+    "aws-crt": "^1.14.5",
     "@aws-sdk/client-iot": "^3.267.0",
     "events": "^3.3.0",
     "protobufjs": "^7.2.2"
