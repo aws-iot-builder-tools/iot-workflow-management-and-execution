@@ -1,28 +1,18 @@
 {
-
   "name": "download-operation",
-
   "version": "1.0.0",
-
   "type": "module",
-
+  "overrides": {
+    "semver": "^7.5.3"
+  },
   "dependencies": {
-
     "@aws-sdk/client-iot": "^3.267.0",
-
     "@aws-sdk/client-sns": "^3.267.0",
-
     "aws-crt": "^1.14.0",
-
     "aws-iot-device-sdk-v2": "^1.2.3",
-
     "events": "^3.3.0",
-
     "protobufjs": "^7.2.4",
-
     "uuid": "^9.0.0"
-
   }
-
 }
 

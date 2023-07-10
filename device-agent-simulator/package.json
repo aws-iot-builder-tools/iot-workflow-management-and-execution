@@ -2,6 +2,9 @@
   "name": "device-agent-simulator-app",
   "version": "1.0.0",
   "main": "app.js",
+  "overrides": {
+    "semver": "^7.5.3"
+  },
   "dependencies": {
     "@aws-sdk/client-iot": "^3.45.0",
     "aws-crt": "^1.14.0",
