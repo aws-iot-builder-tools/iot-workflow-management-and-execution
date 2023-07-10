@@ -3,15 +3,15 @@
   "version": "1.0.0",
   "main": "app.js",
   "dependencies": {
-    "aws-crt": "^1.14.5",
-    "aws-iot-device-sdk-v2": "^1.8.9",
+    "@aws-sdk/client-iot": "^3.45.0",
+    "aws-crt": "^1.14.0",
+    "aws-iot-device-sdk-v2": "^1.2.3",
     "process": "^0.11.10",
     "protobufjs": "^7.2.4",
-    "@aws-sdk/client-iot": "^3.45.0",
-    "uuid": "^9.0.0",
-    "winston": "^3.8.2",
+    "signal-exit": "^3.0.7",
     "util": "^0.12.5",
-    "signal-exit": "^3.0.7"
+    "uuid": "^9.0.0",
+    "winston": "^3.8.2"
   },
   "type": "module"
 }

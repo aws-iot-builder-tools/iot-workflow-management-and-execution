@@ -8,3 +8,7 @@
 /device-agent-simulator/env.list
 /device-management/functions/download-operation/node_modules/
 /device-management/functions/message-handler/node_modules/
+/workflow-management-and-execution/functions/upgrade-start-ack/node_modules/
+/workflow-management-and-execution/functions/upgrade-status-device-events/node_modules/
+/job-processing-and-scheduling/functions/create-job/node_modules/
+/job-processing-and-scheduling/functions/update-status/node_modules/
