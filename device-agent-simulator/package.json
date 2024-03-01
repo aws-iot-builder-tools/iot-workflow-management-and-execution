@@ -7,7 +7,7 @@
   },
   "dependencies": {
     "@aws-sdk/client-iot": "^3.45.0",
-    "aws-crt": "^1.14.0",
+    "aws-crt": "^1.21.1",
     "aws-iot-device-sdk-v2": "^1.2.3",
     "process": "^0.11.10",
     "protobufjs": "^7.2.4",
