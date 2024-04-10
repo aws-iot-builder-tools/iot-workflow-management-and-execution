@@ -11,7 +11,7 @@
     "aws-crt": "^1.21.1",
     "aws-iot-device-sdk-v2": "^1.2.3",
     "events": "^3.3.0",
-    "protobufjs": "^7.2.4",
+    "protobufjs": "^7.2.5",
     "uuid": "^9.0.0"
   }
 }
