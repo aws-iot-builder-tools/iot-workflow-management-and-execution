@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "type": "module",
   "dependencies": {
-    "@aws-sdk/client-iot-jobs-data-plane": "^3.637.0",
-    "@aws-sdk/client-iot": "^3.637.0"
+    "@aws-sdk/client-iot-jobs-data-plane": "^3.982.0",
+    "@aws-sdk/client-iot": "^3.982.0"
   }
 }
