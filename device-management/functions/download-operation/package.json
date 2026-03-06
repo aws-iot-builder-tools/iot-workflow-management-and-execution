@@ -6,8 +6,8 @@
     "semver": "^7.5.3"
   },
   "dependencies": {
-    "@aws-sdk/client-iot": "^3.267.0",
-    "@aws-sdk/client-sns": "^3.267.0",
+    "@aws-sdk/client-iot": "^3.1003.0",
+    "@aws-sdk/client-sns": "^3.1003.0",
     "aws-crt": "^1.21.1",
     "aws-iot-device-sdk-v2": "^1.2.3",
     "events": "^3.3.0",
