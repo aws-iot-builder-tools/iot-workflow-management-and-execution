@@ -6,13 +6,13 @@
     "semver": "^7.5.3"
   },
   "dependencies": {
-    "@aws-sdk/client-iot": "^3.267.0",
-    "@aws-sdk/client-sns": "^3.267.0",
+    "@aws-sdk/client-iot": "^3.1035.0",
+    "@aws-sdk/client-sns": "^3.1035.0",
     "aws-crt": "^1.21.1",
     "aws-iot-device-sdk-v2": "^1.2.3",
     "events": "^3.3.0",
     "protobufjs": "^7.2.5",
-    "uuid": "^9.0.0"
+    "uuid": "^14.0.0"
   }
 }
 
